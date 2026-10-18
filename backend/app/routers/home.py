@@ -98,32 +98,32 @@ async def get_home_daily_overview(user_id: str = Depends(get_authenticated_user_
         # 5. Readiness Status
         rec_score = int(today_rec.get("recovery_score", 75)) if today_rec else 75
         if rec_score >= 80:
-            readiness = "Prime Readiness (High Output Capacity)"
+            readiness = "Feeling Great (Ready to Train! 💪)"
         elif rec_score >= 60:
-            readiness = "Adequate (Standard Training Tolerance)"
+            readiness = "Good to Go (Standard Training Day)"
         else:
-            readiness = "Recovering (Prioritize Restorative Work)"
+            readiness = "Taking it Easy (Rest & Recovery Day)"
 
         # 6. Synthesize 2-3 Actionable AI Insights
         insights = []
         if today_workouts:
             w_names = ", ".join([w.get("title", "Workout") for w in today_workouts])
-            insights.append(f"Completed {len(today_workouts)} training session ({w_names}). Ensure adequate post-workout protein.")
+            insights.append(f"Great job on completing your training session ({w_names})! Grab some protein to help your muscles recover. 💪")
         elif active_plan:
-            insights.append(f"Scheduled training: '{active_plan.get('title')}'. Ready to start when you are.")
+            insights.append(f"Your scheduled training is ready: '{active_plan.get('title')}'. Jump in whenever you're ready!")
         else:
-            insights.append("No workouts logged today. Check today's plan to stay consistent.")
+            insights.append("No workouts logged today. Check today's plan when you're ready to move! ⏱️")
 
         rem_p = max(0.0, float(profile.get("protein_target", 160)) - total_p)
         if rem_p > 0:
-            insights.append(f"Nutrition: {round(total_cals)} kcal logged. {round(rem_p, 1)}g protein remaining to hit your target.")
+            insights.append(f"Nutrition: {round(total_cals)} kcal logged. You're {round(rem_p, 1)}g of protein away from your daily goal! 🥗")
         else:
-            insights.append(f"Protein target achieved ({round(total_p, 1)}g). Total energy: {round(total_cals)} kcal.")
+            insights.append(f"Protein goal hit ({round(total_p, 1)}g)! Total energy: {round(total_cals)} kcal. Great fueling today! 🎉")
 
         if today_rec:
-            insights.append(f"Recovery Score: {rec_score}/100 with {today_rec.get('sleep_hours')}h sleep. Hydration: {today_rec.get('hydration_liters')}L.")
+            insights.append(f"Recovery score is {rec_score}/100 with {today_rec.get('sleep_hours')}h sleep and {today_rec.get('hydration_liters')}L water. Looking good! 😊")
         else:
-            insights.append("Recovery metrics unlogged for today. Record your sleep and soreness to calibrate readiness.")
+            insights.append("Recovery metrics are unlogged today. Record your sleep and soreness whenever you're ready to get personalized tips! 😊")
 
         return DailyWellnessOverview(
             date=today_str,

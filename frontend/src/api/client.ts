@@ -1,4 +1,5 @@
 // Typed LifeSync AI API Client
+import { supabase } from './supabase';
 
 export interface ServiceHealth {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -243,7 +244,18 @@ function getAuthToken(): string | null {
 }
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-  const token = getAuthToken();
+  let token: string | null = null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    token = data.session?.access_token || null;
+  } catch {
+    // fallback
+  }
+
+  if (!token) {
+    token = getAuthToken();
+  }
+
   const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
   const res = await fetch(`${BASE_URL}${url}`, {

@@ -316,14 +316,13 @@ async def get_recovery_recommendations(user_id: str = Depends(get_authenticated_
     if not recent_workouts:
         missing_fields.append("Recent workout records")
 
-    prompt = f"""You are LifeSync AI's Lead Recovery & Sleep Scientist.
-Synthesize individualized recovery guidance grounded strictly in the user's recorded biometrics and training history.
+    prompt = f"""You are LifeSync AI's Recovery Coach.
+Provide simple, friendly, and encouraging recovery guidance in everyday English.
 
-CRITICAL INSTRUCTIONS:
-- Explain which recorded facts informed the recommendation.
-- Any missing data must be explicitly described as unknown or unrecorded, NEVER fabricated or assumed to be normal.
-- Provide practical recovery actions (active recovery, sleep hygiene, tissue work, hydration).
-- Do not make medical diagnoses.
+RULES:
+- Keep all advice short, natural, and easy to understand (no medical or academic jargon).
+- Keep training_recommendation to 1–2 short sentences.
+- Keep sleep and hydration guidance to 1 short practical sentence each.
 
 ATHLETE PERSISTENT MEMORY:
 {memory_context}
@@ -341,12 +340,12 @@ Return a JSON object:
 {{
   "readiness_score": {today_rec.get('recovery_score', 75) if today_rec else 70},
   "status": "Prime" or "Adequate" or "Recovering",
-  "training_recommendation": "Clear suggestion on whether to train hard, do active recovery, or rest.",
-  "rest_protocols": ["Specific protocol 1", "Specific protocol 2"],
-  "sleep_guidance": "Concrete guidance on sleep timing and architecture.",
-  "hydration_guidance": "Targeted fluid and electrolyte intake guidance.",
-  "workout_influence_summary": "How recent workouts influenced this readiness state",
-  "nutrition_influence_summary": "How today's nutrition supports recovery"
+  "training_recommendation": "1–2 friendly, clear sentences on whether to train hard, take it easy, or rest.",
+  "rest_protocols": ["Short practical tip 1", "Short practical tip 2"],
+  "sleep_guidance": "1 short sentence on sleep timing or rest.",
+  "hydration_guidance": "1 short sentence on drinking enough fluids.",
+  "workout_influence_summary": "1 short sentence connecting recent workouts to recovery",
+  "nutrition_influence_summary": "1 short sentence connecting meals to recovery"
 }}
 """
 
@@ -356,7 +355,7 @@ Return a JSON object:
             resp = client.models.generate_content(
                 model=m,
                 contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.4)
+                config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.5)
             )
             if resp and resp.text:
                 data = json.loads(resp.text)
@@ -371,13 +370,13 @@ Return a JSON object:
     return RecoveryRecommendationResponse(
         readiness_score=score,
         status=status_label,
-        training_recommendation="Moderate physical activity with focus on mobility and dynamic warm-up before any heavy loading.",
+        training_recommendation="You're in good shape for a moderate workout! Start with a light warmup before lifting.",
         rest_protocols=[
-            "10 minutes of gentle spinal decompression and hip mobility",
-            "Contrast shower or warm Epsom salt bath to stimulate parasympathetic blood flow"
+            "10 minutes of gentle stretching or yoga",
+            "A quick 15-minute walk to boost blood flow"
         ],
-        sleep_guidance="Target 7.5 to 8.5 hours with consistent sleep-wake timing and a cool, dark environment.",
-        hydration_guidance="Consume 2.5 to 3.0 liters of water spaced throughout the day.",
-        workout_influence_summary="Recent training load demands adequate restorative downtime.",
-        nutrition_influence_summary="Support tissue repair with adequate protein and micronutrient density."
+        sleep_guidance="Aim for 7 to 8 hours of quality sleep tonight to recharge!",
+        hydration_guidance="Keep sipping water throughout the day—aim for 2.5 to 3 liters. 💧",
+        workout_influence_summary="Your recent training was solid; make sure to get enough rest.",
+        nutrition_influence_summary="Eating enough protein and healthy meals will speed up your recovery."
     )

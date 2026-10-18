@@ -484,13 +484,13 @@ export const NutritionWorkspace: React.FC<NutritionWorkspaceProps> = ({ profile 
       <div className="w-full xl:w-[420px] min-h-[500px] flex flex-col">
         <UnifiedChat
           workspace="nutrition"
-          title="LifeSync AI • Nutritionist"
-          subtitle="Precision macros, metabolic fueling & USDA verification"
+          title="LifeSync AI • Nutrition Coach"
+          subtitle="Daily macros, healthy meals & nutrition tips"
           suggestedPrompts={[
-            "I have 35g of protein left today. What quick meal options fit my remaining macros?",
-            "How does nutrient timing around my training impact muscle protein synthesis?",
-            "Estimate the calorie and macro breakdown of 200g cooked jasmine rice and 150g grilled chicken.",
-            "What should I eat post-workout based on the session I logged today?"
+            "I have 35g of protein left today. What's a quick meal idea?",
+            "What should I eat after my workout today?",
+            "How many calories are in 2 eggs and a slice of toast?",
+            "How can I easily get more fiber into my diet?"
           ]}
         />
       </div>

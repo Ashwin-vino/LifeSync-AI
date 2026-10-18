@@ -75,14 +75,17 @@ async def generate_personalized_workout_plan(
         recent_split_str = "; ".join(w_items)
 
     # 2. Build Gemini prompt
-    system_instruction = """You are LifeSync AI's Lead Athletic Performance Specialist & Biomechanist.
-Your mandate is to generate structured, scientifically grounded training sessions tailored to the user's explicit goals, recovery readiness, and physical constraints.
+    system_instruction = """You are the LifeSync AI Workout Coach.
+You create motivating, safe, and effective workouts tailored to the user's goals, recovery state, and physical constraints.
 
-CRITICAL SAFETY & VALIDATION RULES:
-1. Medical & Injury Safety: Strictly respect any user-reported injuries, joint limitations, or soreness. If the user has shoulder impingement, avoid overhead pressing. If lower back fatigue, avoid heavy spinal loading.
-2. Honest Progression: Suggest specific load/weight ONLY when previous history supports it; otherwise leave suggested_weight_kg as null.
-3. Recovery Readiness: If recovery score is < 65 or soreness is high, reduce volume/intensity and prioritize restorative/hypertrophy work over maximal neural strength.
-4. Output strictly valid JSON matching the requested structure.
+STYLE & COMMUNICATION RULES:
+- Use simple, everyday English. Speak like an encouraging, helpful personal trainer.
+- Keep the summary to 1–2 short, motivating sentences.
+- Keep exercise notes to short, practical form cues (e.g. "Keep your chest tall and core tight").
+- Keep the explanation to 1–2 friendly, easy-to-understand sentences (no dense scientific jargon or textbook language).
+- Safety First: Strictly respect any reported injuries or joint pain (e.g. shoulder, lower back). Avoid painful movements.
+- If recovery is low (< 65) or soreness is high, keep the workout light and restorative.
+- Output strictly valid JSON matching the requested structure.
 """
 
     user_prompt = f"""Generate a personalized training session plan for {profile.get('display_name', 'the athlete')}.
@@ -104,9 +107,9 @@ USER REQUESTED PREFERENCES:
 
 Return a JSON object with this exact structure:
 {{
-  "title": "string (e.g. Upper Body Push & Anterior Deltoid Focus)",
+  "title": "string (e.g. Upper Body Push & Core)",
   "category": "Strength" or "Hypertrophy" or "Cardio" or "Mobility" or "HIIT",
-  "summary": "1-2 sentence overview of the session",
+  "summary": "1-2 short, friendly sentences introducing the session (e.g. A quick, energizing push session to build chest and tricep strength! 💪)",
   "warmup": ["dynamic movement 1 with reps/duration", "movement 2", ...],
   "exercises": [
     {{
@@ -116,12 +119,12 @@ Return a JSON object with this exact structure:
       "reps": "8-10" or "10-12",
       "rest_seconds": 90,
       "suggested_weight_kg": null or float,
-      "notes": "Biomechanical cue or safety caution"
+      "notes": "Short, practical cue in simple English (e.g. Keep chest tall and press smoothly)"
     }}
   ],
   "cooldown": ["stretch 1", "stretch 2"],
   "estimated_duration_minutes": {req.duration_target},
-  "explanation": "Scientific explanation of why this plan fits their goal and today's recovery state."
+  "explanation": "1-2 friendly, simple sentences explaining why this workout is great for today."
 }}
 """
 
@@ -221,16 +224,16 @@ Return a JSON object with this exact structure:
     return final_plan
 
 def _generate_fallback_plan(focus: Optional[str], duration: int) -> Dict[str, Any]:
-    """Reliable fallback plan when Gemini is unavailable. Clearly labeled as AI suggested fallback."""
-    focus_title = focus or "Functional Strength & Mobility"
+    """Reliable fallback plan when Gemini is unavailable. Friendly, clear, and direct."""
+    focus_title = focus or "Full Body Strength & Mobility"
     return {
-        "title": f"{focus_title} Session (Structured Baseline)",
+        "title": f"{focus_title} Session",
         "category": "Strength",
-        "summary": "Core compound movements designed for steady progressive overload with safe spinal positioning.",
+        "summary": "A balanced full-body workout focused on key compound movements to build strength and feel energized! 💪",
         "warmup": [
             "World's Greatest Stretch: 5 reps per side",
             "Band Pull-Aparts: 2 sets of 15 reps",
-            "Bodyweight Squats with 3s tempo: 10 reps"
+            "Bodyweight Squats: 10 smooth reps"
         ],
         "exercises": [
             {
@@ -240,7 +243,7 @@ def _generate_fallback_plan(focus: Optional[str], duration: int) -> Dict[str, An
                 "reps": "8-10",
                 "rest_seconds": 90,
                 "suggested_weight_kg": None,
-                "notes": "Keep shoulder blades retracted and feet anchored."
+                "notes": "Keep shoulder blades back and plant your feet firmly."
             },
             {
                 "name": "Barbell Row",
@@ -249,7 +252,7 @@ def _generate_fallback_plan(focus: Optional[str], duration: int) -> Dict[str, An
                 "reps": "8-10",
                 "rest_seconds": 90,
                 "suggested_weight_kg": None,
-                "notes": "Hinge at hips, pull elbows toward back pocket."
+                "notes": "Hinge at the hips and pull elbows back toward your ribs."
             },
             {
                 "name": "Dumbbell Incline Press",
@@ -258,7 +261,7 @@ def _generate_fallback_plan(focus: Optional[str], duration: int) -> Dict[str, An
                 "reps": "10-12",
                 "rest_seconds": 75,
                 "suggested_weight_kg": None,
-                "notes": "30-degree incline, control the eccentric lowering."
+                "notes": "Set bench to a slight incline and lower dumbbells with control."
             },
             {
                 "name": "Lateral Raise",
@@ -267,14 +270,14 @@ def _generate_fallback_plan(focus: Optional[str], duration: int) -> Dict[str, An
                 "reps": "12-15",
                 "rest_seconds": 60,
                 "suggested_weight_kg": None,
-                "notes": "Slight torso lean, lead with lateral deltoid."
+                "notes": "Lead with your elbows and keep a slight bend in your arms."
             }
         ],
         "cooldown": [
-            "Doorway Pectoral Stretch: 45s per side",
-            "Dead Hang from Pull-up Bar: 60s spinal decompression",
-            "Diaphragmatic Box Breathing: 3 minutes"
+            "Doorway Chest Stretch: 45s per side",
+            "Dead Hang from Pull-up Bar: 45s to decompress your back",
+            "Box Breathing: 2 minutes to relax"
         ],
         "estimated_duration_minutes": duration,
-        "explanation": "Structured compound session prioritizing anterior/posterior balance while minimizing lower spine axial load."
+        "explanation": "Hits your major muscle groups with balanced push and pull movements. Easy on your joints and great for building strength! 💪"
     }

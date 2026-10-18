@@ -65,13 +65,13 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
       <div className="flex-1 min-h-[500px] lg:min-h-0 flex flex-col">
         <UnifiedChat
           workspace="home"
-          title="LifeSync AI • Master Command"
-          subtitle="Unified cross-workspace synthesis & connected persistent memory"
+          title="LifeSync AI Assistant"
+          subtitle="Your daily health & wellness companion"
           suggestedPrompts={[
-            "Give me a consolidated summary of my recovery, nutrition, and training status today.",
-            "Based on my latest recovery score, what workout intensity do you recommend?",
-            "What should I prioritize for dinner to hit my daily protein target?",
-            "How do my weekly recovery metrics correlate with my recent training volume?"
+            "How am I doing today overall?",
+            "Should I train hard today or take it easy?",
+            "What's a quick high-protein dinner idea?",
+            "How can I improve my sleep tonight?"
           ]}
         />
       </div>
@@ -175,7 +175,7 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
             <div className="flex items-center gap-2">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               <span className="text-xs font-semibold uppercase tracking-wider text-[#999999]">
-                Cross-Agent Synthesis
+                Today's Highlights
               </span>
             </div>
             <div className="space-y-2">

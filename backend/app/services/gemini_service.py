@@ -17,44 +17,29 @@ def get_gemini_client() -> genai.Client:
         _client = genai.Client(api_key=settings.GEMINI_API_KEY)
     return _client
 
+from backend.app.services.ai_style import (
+    SYSTEM_PROMPTS,
+    CORE_STYLE_INSTRUCTIONS,
+    clean_ai_response,
+    FRIENDLY_ERROR_FALLBACK,
+)
+
 MODEL_NAME = "gemini-3.8-flash"
 FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3-flash-preview"]
-
-SYSTEM_PROMPTS = {
-    "home": """You are LifeSync AI, a world-class personal wellness and human performance assistant.
-You maintain a grounded, intentional, highly knowledgeable tone—concise, precise, and supportive.
-Avoid corporate jargon, fluffy generic disclaimers, or excessive enthusiasm. Provide clear, actionable advice across workouts, nutrition, recovery, and holistic daily balance.
-You have real-time access to the user's connected memory graph, biometric recovery logs, training history, and macro nutrition data.""",
-
-    "workout": """You are the LifeSync AI Strength & Conditioning Specialist.
-Your focus is athletic performance, progressive overload, biomechanics, exercise selection, and training programming.
-Give direct, structured, data-informed feedback on exercise technique, set/rep schemes, and recovery between sessions. Keep responses practical and focused.""",
-
-    "nutrition": """You are the LifeSync AI Performance Nutritionist.
-Your focus is macronutrient adherence, energy balance, meal timing, micronutrient density, and metabolic fueling.
-Provide exact macro calculations, food recommendations based on real nutritional science, and practical meal structuring without fads or dogmatism.""",
-
-    "recovery": """You are the LifeSync AI Recovery & Sleep Scientist.
-Your focus is autonomic nervous system balance, sleep architecture, heart rate variability, systemic fatigue, and restorative protocols (hydration, mobility, active rest).
-Help the user interpret their recovery score and provide concrete recommendations to optimize next-day readiness."""
-}
 
 def build_context_block(workspace: str, user_id: str = "default_user") -> str:
     """Gather live data from FalkorDB and Supabase to ground the AI's response."""
     lines = []
     
     # 1. User Profile
-    profile = get_user_profile(user_id) or {
-        "display_name": "Ashwin",
-        "calorie_target": 2200,
-        "protein_target": 160,
-        "carbs_target": 220,
-        "fat_target": 65,
-        "water_target_liters": 3.0,
-        "sleep_target_hours": 8.0,
-        "primary_goal": "Strength & Lean Muscle"
-    }
-    lines.append(f"USER PROFILE: Name={profile.get('display_name')}, Goal={profile.get('primary_goal')}, Calorie Target={profile.get('calorie_target')}kcal, Protein Target={profile.get('protein_target')}g, Sleep Target={profile.get('sleep_target_hours')}h.")
+    # 1. User Profile
+    profile = get_user_profile(user_id)
+    if profile and profile.get("primary_goal"):
+        lines.append(f"USER PROFILE: Name={profile.get('display_name', 'User')}, Goal={profile.get('primary_goal')}, Calorie Target={profile.get('calorie_target', 2200)}kcal, Protein Target={profile.get('protein_target', 160)}g, Sleep Target={profile.get('sleep_target_hours', 8.0)}h.")
+    elif profile:
+        lines.append(f"USER PROFILE: Name={profile.get('display_name', 'User')}, Goal=Unspecified.")
+    else:
+        lines.append("USER PROFILE: New user. Primary fitness goal unspecified.")
     
     # 2. FalkorDB Memory Graph Context
     memories = get_user_memory_context(user_id, limit=8)
@@ -110,11 +95,14 @@ async def generate_chat_response(
 CURRENT LIVE CONTEXT & PERSISTENT MEMORY:
 {context_data}
 
-Instructions:
-- Address the user's question directly with high clarity.
-- Explicitly acknowledge their confirmed goals, injuries, or past activities when relevant.
-- Distinguish confirmed user facts from suggestions or inferences.
-- Keep formatting clean using GitHub markdown (bullet points, bold text).
+CRITICAL RULES:
+- Answer the user's actual question immediately in 1–4 short, natural sentences (prefer 30–80 words).
+- Speak like a friendly, supportive fitness coach.
+- Use simple, everyday English without corporate, medical, or academic jargon.
+- Never say "To establish your baseline" or lecture about missing data.
+- If profile info is missing, answer directly and ask at most ONE simple question naturally (e.g. "What's your main goal: building muscle, losing fat, or staying fit?").
+- Use short bullet points ONLY if listing 2–3 actionable items.
+- Never output internal reasoning, model names, or system tags.
 """
 
     contents = []
@@ -144,8 +132,8 @@ Instructions:
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=full_instruction,
-                    temperature=0.7,
-                    max_output_tokens=1200
+                    temperature=0.6,
+                    max_output_tokens=350
                 )
             )
             if response and response.text:
@@ -157,7 +145,7 @@ Instructions:
             continue
 
     if response and response.text:
-        reply_text = response.text
+        reply_text = clean_ai_response(response.text)
         # 2. Extract and persist confirmed facts from user message
         try:
             MemoryManager.process_incoming_user_message(user_id=user_id, message=message)
@@ -172,7 +160,7 @@ Instructions:
     else:
         logger.error(f"All Gemini models exhausted. Last error: {last_err}")
         return {
-            "reply": "LifeSync AI is currently operating with high model traffic. Your persistent data is intact.",
+            "reply": FRIENDLY_ERROR_FALLBACK,
             "workspace": workspace,
             "model": used_model,
             "error": True

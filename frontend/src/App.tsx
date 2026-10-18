@@ -3,13 +3,16 @@ import { Sidebar, WorkspaceType } from './components/Sidebar';
 import { Header } from './components/Header';
 import { ProfileModal } from './components/ProfileModal';
 import { MemoryInspectorModal } from './components/MemoryInspectorModal';
+import { AuthModal } from './components/AuthModal';
 import { HomeWorkspace } from './workspaces/HomeWorkspace';
 import { WorkoutWorkspace } from './workspaces/WorkoutWorkspace';
 import { NutritionWorkspace } from './workspaces/NutritionWorkspace';
 import { RecoveryWorkspace } from './workspaces/RecoveryWorkspace';
 import { api, HealthResponse, UserProfile } from './api/client';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
-export const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const { user } = useAuth();
   const [currentWorkspace, setCurrentWorkspace] = useState<WorkspaceType>('home');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -37,10 +40,11 @@ export const App: React.FC = () => {
     }
   };
 
+  // Reload profile and telemetry on mount and when authentication changes
   useEffect(() => {
     refreshHealth();
     loadProfile();
-  }, []);
+  }, [user]);
 
   const handleSaveProfile = async (updatedData: Partial<UserProfile>) => {
     const updated = await api.updateProfile(updatedData);
@@ -127,7 +131,18 @@ export const App: React.FC = () => {
         isOpen={memoryModalOpen}
         onClose={() => setMemoryModalOpen(false)}
       />
+
+      {/* Google OAuth & Account Modal */}
+      <AuthModal />
     </div>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 

@@ -13,6 +13,7 @@ import {
   Brain
 } from 'lucide-react';
 import { HealthResponse } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
 export type WorkspaceType = 'home' | 'workout' | 'nutrition' | 'recovery';
 
@@ -35,6 +36,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onRefreshHealth,
   onOpenMemoryModal,
 }) => {
+  const { user, openAuthModal } = useAuth();
+  const userAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+
   const workspaces: { id: WorkspaceType; label: string; icon: React.ReactNode; desc: string }[] = [
     {
       id: 'home',
@@ -148,6 +153,114 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </button>
         </div>
+      </div>
+
+      {/* User Google Authentication Quick-Action */}
+      <div className="p-3 border-t border-[#222222] bg-[#0E0E0E]">
+        {!collapsed ? (
+          user ? (
+            <button
+              onClick={openAuthModal}
+              className="w-full flex items-center gap-2.5 p-2 rounded-lg bg-[#161616] hover:bg-[#1E1E1E] border border-[#262626] hover:border-[#383838] transition-colors text-left"
+              title="Manage account & sign out"
+            >
+              {userAvatar ? (
+                <img
+                  src={userAvatar}
+                  alt={userName}
+                  className="w-6 h-6 rounded-full object-cover border border-[#404040]"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-[#262626] flex items-center justify-center text-[10px] font-semibold text-white">
+                  {userName[0]?.toUpperCase() || 'U'}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-[#EAEAEA] truncate">{userName}</p>
+                <p className="text-[10px] text-[#787878] truncate flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Google Verified
+                </p>
+              </div>
+            </button>
+          ) : (
+            <button
+              id="sidebar-google-signin-btn"
+              onClick={openAuthModal}
+              className="w-full flex items-center justify-center gap-2 p-2 rounded-lg bg-[#161616] hover:bg-[#1E1E1E] border border-[#2D2D2D] hover:border-[#404040] text-xs font-medium text-[#EDEDED] transition-colors shadow-sm"
+            >
+              <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                />
+              </svg>
+              <span>Continue with Google</span>
+            </button>
+          )
+        ) : (
+          <div className="flex justify-center">
+            {user ? (
+              <button
+                onClick={openAuthModal}
+                className="relative"
+                title={`Logged in as ${user.email}`}
+              >
+                {userAvatar ? (
+                  <img
+                    src={userAvatar}
+                    alt={userName}
+                    className="w-6 h-6 rounded-full object-cover border border-[#404040]"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-[#262626] flex items-center justify-center text-[10px] font-semibold text-white">
+                    {userName[0]?.toUpperCase() || 'U'}
+                  </div>
+                )}
+                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-[#0A0A0A]" />
+              </button>
+            ) : (
+              <button
+                onClick={openAuthModal}
+                className="p-1 rounded hover:bg-[#202020]"
+                title="Sign in with Google"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Live System Integration Telemetry */}

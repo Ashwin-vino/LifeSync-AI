@@ -714,12 +714,12 @@ export const WorkoutWorkspace: React.FC = () => {
       <div className="w-full xl:w-[420px] min-h-[500px] flex flex-col">
         <UnifiedChat
           workspace="workout"
-          title="LifeSync AI • Strength Coach"
-          subtitle="Biomechanics, progressive overload & training programming"
+          title="LifeSync AI • Workout Coach"
+          subtitle="Exercise advice, form tips & training routines"
           suggestedPrompts={[
-            "Analyze my recent workout volume and suggest progressive overload steps.",
-            "I'm feeling fatigued in my lower back. What squat alternatives should I do?",
-            "Structure a 5-day hypertrophy split targeting upper chest and lats."
+            "Give me a quick 30-minute chest and arms workout.",
+            "My lower back feels tight today. What squat alternatives can I do?",
+            "What's a simple way to progress on my bench press?"
           ]}
         />
       </div>

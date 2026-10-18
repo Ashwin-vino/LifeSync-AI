@@ -150,15 +150,13 @@ class MemoryManager:
         lines = []
 
         # 1. User Profile
-        profile = get_user_profile(user_id) or {
-            "display_name": "Ashwin",
-            "primary_goal": "Strength & Lean Muscle",
-            "calorie_target": 2200,
-            "protein_target": 160,
-            "sleep_target_hours": 8.0,
-            "water_target_liters": 3.0
-        }
-        lines.append(f"USER PROFILE: Name={profile.get('display_name')}, Goal={profile.get('primary_goal')}, Targets: {profile.get('calorie_target')}kcal, {profile.get('protein_target')}g Protein, {profile.get('sleep_target_hours')}h Sleep.")
+        profile = get_user_profile(user_id)
+        if profile and profile.get("primary_goal"):
+            lines.append(f"USER PROFILE: Name={profile.get('display_name', 'User')}, Goal={profile.get('primary_goal')}, Targets: {profile.get('calorie_target', 2200)}kcal, {profile.get('protein_target', 160)}g Protein, {profile.get('sleep_target_hours', 8.0)}h Sleep.")
+        elif profile:
+            lines.append(f"USER PROFILE: Name={profile.get('display_name', 'User')}, Goal=Unspecified. (If relevant, ask one friendly question about their fitness goal).")
+        else:
+            lines.append("USER PROFILE: New user. Primary fitness goal unspecified. (If relevant, ask one friendly question about their fitness goal).")
 
         # 2. Vector Semantic Memory Search
         if current_message.strip():

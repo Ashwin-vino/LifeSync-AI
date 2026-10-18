@@ -12,12 +12,12 @@ interface UnifiedChatProps {
 
 export const UnifiedChat: React.FC<UnifiedChatProps> = ({
   workspace,
-  title = 'LifeSync AI Intelligence',
-  subtitle = 'Grounded with FalkorDB persistent memory & Supabase biometrics',
+  title = 'LifeSync AI',
+  subtitle = 'Your personal fitness & wellness companion',
   suggestedPrompts = [
-    "Analyze today's total recovery score and suggest training volume.",
-    "How does my protein intake today align with lean muscle progression?",
-    "Plan a 45-minute strength session targeting chest and triceps."
+    "How's my recovery looking today?",
+    "Did I hit my protein goal today?",
+    "Give me a quick 30-minute chest workout."
   ]
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -76,7 +76,6 @@ export const UnifiedChat: React.FC<UnifiedChatProps> = ({
         content: res.reply,
         workspace: workspace,
         created_at: new Date().toISOString(),
-        metadata: { model: res.model }
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
@@ -85,7 +84,7 @@ export const UnifiedChat: React.FC<UnifiedChatProps> = ({
         ...prev,
         {
           role: 'assistant',
-          content: `Error: ${err.message || 'Unable to connect to Gemini'}`,
+          content: "I'm having a little trouble connecting right now. Please try again in a moment! 😊",
           workspace: workspace,
           created_at: new Date().toISOString()
         }
@@ -142,16 +141,16 @@ export const UnifiedChat: React.FC<UnifiedChatProps> = ({
               <Bot className="w-5 h-5 text-[#9E9E9E]" />
             </div>
             <div className="max-w-md space-y-1">
-              <p className="text-xs font-medium text-white">How can LifeSync assist you today?</p>
+              <p className="text-xs font-medium text-white">Hi! How can I help you today?</p>
               <p className="text-[11px] text-[#737373]">
-                Your workouts, meals, recovery biometrics, and FalkorDB knowledge graph are loaded into context.
+                Ask me anything about your workouts, meals, or recovery. I'm here to help! 💪
               </p>
             </div>
 
             {/* Suggested Prompts */}
             <div className="w-full max-w-lg space-y-2 pt-2">
               <span className="text-[10px] uppercase tracking-wider text-[#555555] font-semibold">
-                Suggested Prompts
+                Quick Prompts
               </span>
               <div className="grid gap-2">
                 {suggestedPrompts.map((p, i) => (
@@ -189,9 +188,6 @@ export const UnifiedChat: React.FC<UnifiedChatProps> = ({
                   }`}
                 >
                   <div className="whitespace-pre-wrap font-sans">{m.content}</div>
-                  <div className="mt-1 text-[9px] text-[#666666] flex items-center justify-end gap-1">
-                    {m.metadata?.model && <span>{m.metadata.model}</span>}
-                  </div>
                 </div>
                 {isUser && (
                   <div className="w-6 h-6 rounded bg-[#2A2A2A] border border-[#404040] flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -214,7 +210,7 @@ export const UnifiedChat: React.FC<UnifiedChatProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-[#666666] animate-pulse delay-150" />
                 <span className="w-1.5 h-1.5 rounded-full bg-[#666666] animate-pulse delay-300" />
               </div>
-              <span className="text-[11px] text-[#777777]">Synthesizing live telemetry...</span>
+              <span className="text-[11px] text-[#777777]">Thinking...</span>
             </div>
           </div>
         )}

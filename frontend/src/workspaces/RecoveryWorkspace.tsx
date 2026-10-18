@@ -422,13 +422,13 @@ export const RecoveryWorkspace: React.FC<RecoveryWorkspaceProps> = ({ profile })
       <div className="w-full xl:w-[420px] min-h-[500px] flex flex-col">
         <UnifiedChat
           workspace="recovery"
-          title="LifeSync AI • Recovery Scientist"
-          subtitle="Autonomic regulation, sleep hygiene & systemic fatigue mitigation"
+          title="LifeSync AI • Recovery Coach"
+          subtitle="Sleep quality, hydration & muscle recovery"
           suggestedPrompts={[
-            "My hamstrings and glutes have a soreness level of 4/5 after training. What recovery modalities help fastest?",
-            "What bedtime routine changes can increase deep slow-wave sleep duration?",
-            "How does yesterday's workout intensity correlate with my current recovery score?",
-            "Should I modify today's planned workout given my reported fatigue level?"
+            "My legs are pretty sore from yesterday. What's the best way to recover?",
+            "What can I do before bed to get deeper sleep?",
+            "Should I take a rest day today or go for a walk?",
+            "How much water should I drink on workout days?"
           ]}
         />
       </div>

@@ -326,8 +326,13 @@ async def get_nutrition_recommendations(user_id: str = Depends(get_authenticated
     # Cross-agent memory context
     memory_context = MemoryManager.get_relevant_context(user_id, workspace="nutrition", current_message="Personalized meal recommendations")
 
-    prompt = f"""You are LifeSync AI's Lead Performance Nutritionist.
-Synthesize individualized meal recommendations and macro guidance for the user.
+    prompt = f"""You are LifeSync AI's Nutrition Coach.
+Give short, friendly, and practical meal recommendations for the user in simple everyday English.
+
+RULES:
+- Keep everything short, encouraging, and easy to understand (no dense bio-chemistry or academic jargon).
+- Keep macro_advice to 1–2 short sentences (30–60 words).
+- Keep rationales to 1 short sentence.
 
 ATHLETE PROFILE & MEMORY:
 {memory_context}
@@ -346,8 +351,8 @@ RECOVERY STATE:
 
 Return a JSON object:
 {{
-  "headline": "Short punchy summary (e.g. Post-Workout Refuel & Glycogen Replenishment)",
-  "macro_advice": "Actionable explanation of calories and macros remaining today based on their workout and recovery.",
+  "headline": "Short, friendly 2-4 word title (e.g. Post-Workout Refuel 💪)",
+  "macro_advice": "1–2 short, friendly sentences on remaining calories and protein today.",
   "suggested_meals": [
     {{
       "name": "Meal name",
@@ -356,12 +361,12 @@ Return a JSON object:
       "est_protein": 35,
       "est_carbs": 50,
       "est_fat": 12,
-      "rationale": "Why this aligns with today's training"
+      "rationale": "1 short sentence explaining why this meal is great"
     }}
   ],
-  "workout_nutrition_link": "How today's specific workout influences this advice",
-  "recovery_nutrition_link": "How hydration or sleep influences this advice",
-  "cautions": ["Dietary caution if applicable"]
+  "workout_nutrition_link": "1 simple sentence linking today's training to nutrition",
+  "recovery_nutrition_link": "1 simple sentence on hydration or recovery",
+  "cautions": ["Short practical tip if needed"]
 }}
 """
 
@@ -371,7 +376,7 @@ Return a JSON object:
             resp = client.models.generate_content(
                 model=m,
                 contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.4)
+                config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.5)
             )
             if resp and resp.text:
                 data = json.loads(resp.text)
@@ -384,8 +389,8 @@ Return a JSON object:
     rem_cals = max(round(cal_target - total_cals), 0)
     rem_p = max(round(prot_target - total_p, 1), 0.0)
     return NutritionRecommendationResponse(
-        headline="Balanced Nutrient Allocation",
-        macro_advice=f"You have approximately {rem_cals} kcal and {rem_p}g protein remaining to hit your target today.",
+        headline="Daily Nutrition Plan 🥗",
+        macro_advice=f"You have about {rem_cals} calories and {rem_p}g protein left to reach your goal today. You're doing great!",
         suggested_meals=[
             {
                 "name": "Grilled Chicken Breast with Quinoa & Steamed Broccoli",
@@ -394,10 +399,10 @@ Return a JSON object:
                 "est_protein": 42,
                 "est_carbs": 52,
                 "est_fat": 8,
-                "rationale": "High bioavailability lean protein with complex carbs to replenish muscle glycogen."
+                "rationale": "Lean protein with healthy carbs to help rebuild muscle and keep you energized."
             }
         ],
-        workout_nutrition_link="Prioritizing complete protein and complex carbs after physical training.",
-        recovery_nutrition_link="Ensure adequate sodium and water intake to support cellular rehydration.",
-        cautions=["Adjust portion sizes according to your subjective fullness and energy demands."]
+        workout_nutrition_link="A balanced meal will help you recover faster from today's workout.",
+        recovery_nutrition_link="Drink a large glass of water with your meal to stay well hydrated! 💧",
+        cautions=["Listen to your hunger cues and adjust portions as needed."]
     )
