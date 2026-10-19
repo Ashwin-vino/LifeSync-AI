@@ -133,7 +133,8 @@ CRITICAL RULES:
                 config=types.GenerateContentConfig(
                     system_instruction=full_instruction,
                     temperature=0.6,
-                    max_output_tokens=350
+                    max_output_tokens=800,
+                    thinking_config=types.ThinkingConfig(thinking_budget=0)
                 )
             )
             if response and response.text:
@@ -145,7 +146,9 @@ CRITICAL RULES:
             continue
 
     if response and response.text:
-        reply_text = clean_ai_response(response.text)
+        candidate = response.candidates[0] if (response.candidates and len(response.candidates) > 0) else None
+        finish_reason = getattr(candidate, "finish_reason", None)
+        reply_text = clean_ai_response(response.text, finish_reason=finish_reason)
         # 2. Extract and persist confirmed facts from user message
         try:
             MemoryManager.process_incoming_user_message(user_id=user_id, message=message)

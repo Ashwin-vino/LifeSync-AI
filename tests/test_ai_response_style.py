@@ -87,3 +87,37 @@ async def test_chat_response_brevity_and_style():
     # Friendly tone check
     assert not reply.startswith("AI:")
     assert not reply.startswith("Assistant:")
+
+def test_clean_ai_response_handles_max_tokens_truncation():
+    """Verify that responses truncated by MAX_TOKENS are trimmed cleanly rather than cutting off mid-sentence."""
+    # Case 1: Multiple sentences where the second is chopped off mid-phrase
+    text1 = "Commit to 20 minutes of daily exercise! It will build strong momentum and you will"
+    cleaned1 = clean_ai_response(text1, finish_reason="MAX_TOKENS")
+    assert cleaned1 == "Commit to 20 minutes of daily exercise!"
+
+    # Case 2: Single sentence chopped off at a trailing connector word
+    text2 = "Focus on moving your body for at least 30 minutes every"
+    cleaned2 = clean_ai_response(text2, finish_reason="MAX_TOKENS")
+    assert cleaned2.endswith(".")
+    assert not cleaned2.endswith("every.")
+    assert "Focus on moving your body for at least 30 minutes" in cleaned2
+
+@pytest.mark.asyncio
+async def test_chat_response_workout_tip_completeness():
+    """Verify Workout AI response to 'I want to get fit. Give me one simple tip' finishes completely without truncation."""
+    res = await generate_chat_response(
+        message="I want to get fit. Give me one simple tip",
+        workspace="workout",
+        user_id="default_user"
+    )
+    assert "reply" in res
+    reply = res["reply"].strip()
+    words = reply.split()
+    assert len(words) >= 10, f"Response too short: {reply}"
+    assert len(words) <= 120, f"Response too long: {reply}"
+    # Verify the reply terminates naturally with proper punctuation or emoji
+    assert re.search(r"[\.!\?][\s\W]*$", reply) or any(reply.endswith(c) for c in (".", "!", "?", "💪", "😊", "🔥", "✨", "🏃‍♂️", "🥗")), f"Reply does not end with natural terminal punctuation/emoji: '{reply}'"
+    # Ensure it didn't cut off on common dangling conjunctions
+    assert not re.search(r"\b(every|and|or|with|to|for|the|a)\s*$", reply, re.IGNORECASE), f"Reply ends on dangling word: '{reply}'"
+
+

@@ -1,5 +1,5 @@
 import re
-from typing import Optional
+from typing import Optional, Any
 
 # =========================================================================
 # LifeSync AI Centralized AI Response Style Guidelines
@@ -79,11 +79,12 @@ BANNED_PHRASES = [
     r"universal performance",
 ]
 
-def clean_ai_response(text: Optional[str]) -> str:
+def clean_ai_response(text: Optional[str], finish_reason: Optional[Any] = None) -> str:
     """
     Clean up AI output:
     - Removes internal system prefixes (e.g., 'Assistant:', 'AI:', 'LifeSync AI:')
     - Sanitizes banned robotic phrasing
+    - Handles truncated responses ending with MAX_TOKENS by trimming to last complete sentence
     - Trims extraneous whitespace
     """
     if not text:
@@ -113,7 +114,24 @@ def clean_ai_response(text: Optional[str]) -> str:
                 )
             cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
 
-    # 3. Clean up double spaces or orphaned punctuation
+    # 3. Handle truncation if finish_reason was MAX_TOKENS
+    is_max_tokens = False
+    if finish_reason is not None:
+        if str(finish_reason).endswith("MAX_TOKENS") or getattr(finish_reason, "name", "") == "MAX_TOKENS":
+            is_max_tokens = True
+
+    if is_max_tokens:
+        # If cut off mid-sentence, trim back to the last complete sentence
+        last_punct = max(cleaned.rfind('.'), cleaned.rfind('!'), cleaned.rfind('?'))
+        if last_punct > 15:
+            cleaned = cleaned[:last_punct + 1].strip()
+        else:
+            # Strip trailing incomplete connector words and add terminal punctuation
+            cleaned = re.sub(r"\s+(and|or|the|a|an|to|for|with|in|on|at|every|your|of|is|are|will|can)\s*$", "", cleaned, flags=re.IGNORECASE)
+            if cleaned and cleaned[-1] not in ".!?":
+                cleaned += "."
+
+    # 4. Clean up double spaces or orphaned punctuation
     cleaned = re.sub(r"\s{2,}", " ", cleaned)
     cleaned = re.sub(r"^\s*[,;\.\-–—]\s*", "", cleaned)
     cleaned = cleaned.strip()
@@ -122,3 +140,4 @@ def clean_ai_response(text: Optional[str]) -> str:
         return FRIENDLY_MISSING_GOAL_PROMPT
 
     return cleaned
+
