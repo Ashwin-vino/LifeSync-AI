@@ -158,6 +158,16 @@ def delete_memory_fact_node(fact_id: str) -> bool:
 
 # ==================== User Goals & Preferences ====================
 
+def _score_goal_specificity(title: str) -> int:
+    """Score goal specificity so detailed/concrete goals are prioritized in prompt context."""
+    from backend.app.memory.extractor import is_generic_goal
+    if is_generic_goal(title):
+        return 0
+    # Specific metrics, numbers, distance, weights, dates or target indicators
+    if re.search(r"\d+|sub-|\b(kg|lbs|pounds|k|miles|km|minutes|hours|december|january|february|march|april|may|june|july|august|september|october|november|marathon|race|competition|body\s*fat)\b", title, re.IGNORECASE):
+        return 2
+    return 1
+
 def store_goal_node(
     goal_id: str,
     user_id: str,
@@ -166,15 +176,46 @@ def store_goal_node(
     provenance: str = "explicit_user_statement",
     confidence: float = 1.0
 ) -> bool:
-    """Store Goal node and create [:USER_HAS_GOAL] relationship."""
+    """Store Goal node and create [:USER_HAS_GOAL] relationship with deduplication."""
     try:
         g = get_graph()
         s_gid = sanitize_string(goal_id)
         s_uid = sanitize_string(user_id)
-        s_title = sanitize_string(title)
+        s_title = sanitize_string(title.strip())
         s_cat = sanitize_string(category)
         s_prov = sanitize_string(provenance)
+        norm_title = re.sub(r"^(user\s+goal:\s*|my\s+goal\s+is\s+(?:to\s+)?|to\s+)", "", s_title.lower()).strip()
+        norm_title = re.sub(r"[^\w\s]", "", norm_title).strip()
 
+        # 1. Check if an active goal with matching normalized title already exists for this user
+        existing_res = g.query(f"""
+            MATCH (u:User {{id: '{s_uid}'}})-[:USER_HAS_GOAL]->(eg:Goal)
+            WHERE eg.status = 'active'
+            RETURN eg.id, eg.title
+        """)
+        for row in (existing_res.result_set or []):
+            eg_id, eg_title = row[0], row[1] or ""
+            eg_norm = re.sub(r"^(user\s+goal:\s*|my\s+goal\s+is\s+(?:to\s+)?|to\s+)", "", eg_title.lower()).strip()
+            eg_norm = re.sub(r"[^\w\s]", "", eg_norm).strip()
+            if eg_norm == norm_title:
+                # Update timestamp and confidence on existing goal without creating a duplicate
+                g.query(f"""
+                    MATCH (eg:Goal {{id: '{eg_id}'}})
+                    SET eg.timestamp = timestamp(),
+                        eg.confidence = {float(confidence)},
+                        eg.provenance = '{s_prov}'
+                """)
+                return True
+
+        # 2. Check generic goal handling vs specific goals
+        from backend.app.memory.extractor import is_generic_goal
+        if is_generic_goal(title):
+            active_goals = existing_res.result_set or []
+            # If the user already has any active goals, do not create duplicate or generic noise
+            if len(active_goals) > 0:
+                return True
+
+        # 3. Create new distinct Goal node
         query = f"""
             MERGE (u:User {{id: '{s_uid}'}})
             MERGE (g:Goal {{id: '{s_gid}'}})
@@ -425,14 +466,50 @@ def get_graph_context_for_prompt(user_id: str = "default_user") -> Dict[str, Any
         g = get_graph()
         s_uid = sanitize_string(user_id)
 
-        # 1. Active Goals
+        # 1. Active Goals (Fetch recent candidates, deduplicate by normalized title, prioritize specific goals)
         goals_res = g.query(f"""
             MATCH (u:User {{id: '{s_uid}'}})-[:USER_HAS_GOAL]->(g:Goal)
             WHERE g.status = 'active'
             RETURN g.title, g.category, g.provenance, g.timestamp
-            ORDER BY g.timestamp DESC LIMIT 5
+            ORDER BY g.timestamp DESC LIMIT 25
         """)
-        goals = [{"title": r[0], "category": r[1], "provenance": r[2]} for r in (goals_res.result_set or [])]
+        unique_goals_map: Dict[str, Dict[str, Any]] = {}
+        for r in (goals_res.result_set or []):
+            raw_title = (r[0] or "").strip()
+            if not raw_title:
+                continue
+            norm = re.sub(r"^(user\s+goal:\s*|my\s+goal\s+is\s+(?:to\s+)?|to\s+)", "", raw_title.lower()).strip()
+            norm = re.sub(r"[^\w\s]", "", norm).strip()
+            if not norm:
+                continue
+            ts = r[3] or 0
+            if norm not in unique_goals_map:
+                unique_goals_map[norm] = {
+                    "title": raw_title,
+                    "category": r[1],
+                    "provenance": r[2],
+                    "timestamp": ts,
+                    "score": _score_goal_specificity(raw_title)
+                }
+            else:
+                existing = unique_goals_map[norm]
+                if ts > existing["timestamp"]:
+                    existing["timestamp"] = ts
+                curr_score = _score_goal_specificity(raw_title)
+                if curr_score > existing["score"]:
+                    existing["title"] = raw_title
+                    existing["score"] = curr_score
+
+        # Prioritize specific goals first, then by recency; take top 5 unique goals
+        sorted_goals = sorted(
+            unique_goals_map.values(),
+            key=lambda item: (item["score"], item["timestamp"]),
+            reverse=True
+        )
+        goals = [
+            {"title": g_item["title"], "category": g_item["category"], "provenance": g_item["provenance"]}
+            for g_item in sorted_goals[:5]
+        ]
 
         # 2. Active Preferences
         prefs_res = g.query(f"""

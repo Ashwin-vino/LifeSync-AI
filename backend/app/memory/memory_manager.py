@@ -1,3 +1,4 @@
+import re
 import uuid
 import logging
 from datetime import date
@@ -69,6 +70,60 @@ class MemoryManager:
         fact_id = str(uuid.uuid4())
         clean_tags = tags or [fact_type]
         
+        # Check for goal deduplication and generic vs specific goals
+        if fact_type == "goal":
+            from backend.app.memory.extractor import is_generic_goal
+            norm_content = re.sub(r"^(user\s+goal:\s*|my\s+goal\s+is\s+(?:to\s+)?|to\s+)", "", content.lower()).strip()
+            norm_content = re.sub(r"[^\w\s]", "", norm_content).strip()
+
+            sb = get_supabase()
+            try:
+                existing_res = sb.table("memory_facts").select("id, content, confidence").eq("user_id", user_id).eq("fact_type", "goal").eq("status", "active").execute()
+                existing_facts = existing_res.data or []
+                
+                # Check for exact duplicate active goal
+                for ef in existing_facts:
+                    ef_norm = re.sub(r"^(user\s+goal:\s*|my\s+goal\s+is\s+(?:to\s+)?|to\s+)", "", (ef.get("content") or "").lower()).strip()
+                    ef_norm = re.sub(r"[^\w\s]", "", ef_norm).strip()
+                    if ef_norm == norm_content:
+                        existing_id = ef["id"]
+                        sb.table("memory_facts").update({
+                            "confidence": confidence,
+                            "provenance": provenance
+                        }).eq("id", existing_id).execute()
+                        store_goal_node(
+                            goal_id=existing_id,
+                            user_id=user_id,
+                            title=content,
+                            provenance=provenance,
+                            confidence=confidence
+                        )
+                        return {
+                            "id": existing_id,
+                            "fact_type": fact_type,
+                            "content": content,
+                            "provenance": provenance,
+                            "confidence": confidence,
+                            "tags": clean_tags,
+                            "status": "active"
+                        }
+
+                # If generic goal and user already has active goals, skip creating new goal fact
+                if is_generic_goal(content) and len(existing_facts) > 0:
+                    logger.info(f"Skipping generic goal '{content}' for user {user_id} with existing goals.")
+                    first_goal = existing_facts[0]
+                    return {
+                        "id": first_goal["id"],
+                        "fact_type": fact_type,
+                        "content": first_goal.get("content", content),
+                        "provenance": provenance,
+                        "confidence": confidence,
+                        "tags": clean_tags,
+                        "status": "active"
+                    }
+            except Exception as se:
+                logger.warning(f"Error checking existing goals in Supabase: {se}")
+
         # 1. Generate semantic embedding using Gemini
         embedding = generate_embedding(content)
 
@@ -161,10 +216,18 @@ class MemoryManager:
         # 2. Vector Semantic Memory Search
         if current_message.strip():
             msg_embedding = generate_embedding(current_message)
-            semantic_memories = search_semantic_memories(msg_embedding, user_id=user_id, limit=4)
+            semantic_memories = search_semantic_memories(msg_embedding, user_id=user_id, limit=8)
             if semantic_memories:
-                m_lines = [f"- [{m['provenance'].upper()}] {m['content']}" for m in semantic_memories]
-                lines.append("RELEVANT RETRIEVED SEMANTIC MEMORIES:\n" + "\n".join(m_lines))
+                seen_content = set()
+                unique_memories = []
+                for m in semantic_memories:
+                    c_norm = re.sub(r"[^\w\s]", "", (m.get('content') or "").lower()).strip()
+                    if c_norm and c_norm not in seen_content:
+                        seen_content.add(c_norm)
+                        unique_memories.append(m)
+                if unique_memories:
+                    m_lines = [f"- [{m['provenance'].upper()}] {m['content']}" for m in unique_memories[:4]]
+                    lines.append("RELEVANT RETRIEVED SEMANTIC MEMORIES:\n" + "\n".join(m_lines))
 
         # 3. Multi-hop Graph Traversal Context
         graph_context = get_graph_context_for_prompt(user_id=user_id)
@@ -211,6 +274,13 @@ class MemoryManager:
         """
         facts = extract_explicit_statements(message)
         for f in facts:
+            if f.get("fact_type") == "goal":
+                from backend.app.memory.extractor import is_generic_goal
+                if is_generic_goal(f["content"]):
+                    ctx = get_graph_context_for_prompt(user_id=user_id)
+                    if ctx.get("goals") and len(ctx["goals"]) > 0:
+                        logger.info(f"Skipping generic goal extraction '{f['content']}' for user {user_id} with existing goals.")
+                        continue
             MemoryManager.save_memory_fact(
                 user_id=user_id,
                 fact_type=f["fact_type"],
